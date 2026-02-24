@@ -113,7 +113,10 @@ export const addMenuItem = createAsyncThunk(
       credentials: 'include',
       body: JSON.stringify(item),
     });
-    if (!response.ok) throw new Error('Failed to add menu item');
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to add menu item');
+    }
     return await response.json();
   }
 );

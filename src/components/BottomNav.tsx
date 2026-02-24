@@ -5,7 +5,7 @@ import {
   Restaurant as RestaurantIcon,
   CalendarMonth as CalendarIcon,
   Add as AddIcon,
-  Favorite as FavoriteIcon,
+  ShoppingCart as ShoppingCartIcon,
 } from '@mui/icons-material';
 
 const BottomNav = () => {
@@ -18,7 +18,7 @@ const BottomNav = () => {
     if (path === '/') return 0;
     if (path.startsWith('/planner')) return 1;
     if (path === '/add') return 2;
-    if (path.includes('/favorites')) return 3;
+    if (path.startsWith('/shopping')) return 3;
     return 0;
   };
 
@@ -37,7 +37,7 @@ const BottomNav = () => {
         navigate('/add');
         break;
       case 3:
-        navigate('/?favorites=true');
+        navigate('/shopping');
         break;
     }
   };
@@ -53,7 +53,7 @@ const BottomNav = () => {
         <BottomNavigationAction label="Menu" icon={<RestaurantIcon />} />
         <BottomNavigationAction label="Planner" icon={<CalendarIcon />} />
         <BottomNavigationAction label="Add" icon={<AddIcon />} />
-        <BottomNavigationAction label="Favorites" icon={<FavoriteIcon />} />
+        <BottomNavigationAction label="Shopping" icon={<ShoppingCartIcon />} />
       </BottomNavigation>
     </Paper>
   );

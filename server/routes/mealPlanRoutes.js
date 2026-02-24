@@ -162,4 +162,108 @@ router.post('/plans/shopping-list', isAuthenticated, async (req, res) => {
   }
 });
 
+// Get all shopping lists for the user
+router.get('/shopping-lists', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      `SELECT sl.*,
+        (SELECT COUNT(*) FROM shopping_list_items sli WHERE sli.shopping_list_id = sl.id) as item_count,
+        (SELECT COUNT(*) FROM shopping_list_items sli WHERE sli.shopping_list_id = sl.id AND sli.checked = true) as checked_count
+       FROM shopping_lists sl
+       WHERE sl.user_id = $1
+       ORDER BY sl.created_at DESC`,
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching shopping lists:', error);
+    res.status(500).json({ error: 'Failed to fetch shopping lists' });
+  }
+});
+
+// Get a single shopping list with items
+router.get('/shopping-lists/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const listResult = await pool.query(
+      'SELECT * FROM shopping_lists WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    if (listResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Shopping list not found' });
+    }
+
+    const itemsResult = await pool.query(
+      `SELECT sli.*, i.name as ingredient_name, i.category as ingredient_category
+       FROM shopping_list_items sli
+       JOIN ingredients i ON sli.ingredient_id = i.id
+       WHERE sli.shopping_list_id = $1
+       ORDER BY i.category, i.name`,
+      [id]
+    );
+
+    res.json({ ...listResult.rows[0], items: itemsResult.rows });
+  } catch (error) {
+    console.error('Error fetching shopping list:', error);
+    res.status(500).json({ error: 'Failed to fetch shopping list' });
+  }
+});
+
+// Toggle shopping list item checked
+router.patch('/shopping-lists/:listId/items/:itemId', isAuthenticated, async (req, res) => {
+  try {
+    const { listId, itemId } = req.params;
+    const userId = req.user.id;
+
+    // Verify ownership
+    const listCheck = await pool.query(
+      'SELECT id FROM shopping_lists WHERE id = $1 AND user_id = $2',
+      [listId, userId]
+    );
+    if (listCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Shopping list not found' });
+    }
+
+    const result = await pool.query(
+      'UPDATE shopping_list_items SET checked = NOT checked WHERE id = $1 AND shopping_list_id = $2 RETURNING *',
+      [itemId, listId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error toggling item:', error);
+    res.status(500).json({ error: 'Failed to toggle item' });
+  }
+});
+
+// Delete a shopping list
+router.delete('/shopping-lists/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'DELETE FROM shopping_lists WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Shopping list not found' });
+    }
+
+    res.json({ message: 'Shopping list deleted' });
+  } catch (error) {
+    console.error('Error deleting shopping list:', error);
+    res.status(500).json({ error: 'Failed to delete shopping list' });
+  }
+});
+
 export default router;

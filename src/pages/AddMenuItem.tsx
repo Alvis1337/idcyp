@@ -15,6 +15,8 @@ import {
   Chip,
   Stack,
   Grid,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -52,6 +54,8 @@ const AddMenuItem = () => {
   ]);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -98,12 +102,24 @@ const AddMenuItem = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     if (!user) {
       login();
       return;
     }
 
+    if (!formData.name.trim()) {
+      setError('Please enter a dish name.');
+      return;
+    }
+
+    if (!formData.category) {
+      setError('Please select a category.');
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const itemData: any = {
         ...formData,
@@ -121,8 +137,11 @@ const AddMenuItem = () => {
 
       await dispatch(addMenuItem(itemData)).unwrap();
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add menu item:', error);
+      setError(error?.message || 'Failed to add menu item. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -150,6 +169,11 @@ const AddMenuItem = () => {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
           {/* Basic Info */}
           <Typography variant="h6" gutterBottom>Basic Information</Typography>
           
@@ -383,8 +407,10 @@ const AddMenuItem = () => {
               color="primary"
               fullWidth
               size="large"
+              disabled={submitting}
+              startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : undefined}
             >
-              Add Menu Item
+              {submitting ? 'Adding...' : 'Add Menu Item'}
             </Button>
             <Button
               variant="outlined"

@@ -160,6 +160,13 @@ router.post('/items', isAuthenticated, async (req, res) => {
       prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type,
       recipes, ingredients, tags 
     } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    if (!category || !category.trim()) {
+      return res.status(400).json({ error: 'Category is required' });
+    }
     
     const userId = req.user.id;
 

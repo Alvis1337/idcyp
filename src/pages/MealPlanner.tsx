@@ -28,6 +28,7 @@ import {
   Delete as DeleteIcon,
   ShoppingCart as ShoppingCartIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchMealPlans, addMealPlan, deleteMealPlan } from '../store/mealPlanSlice';
 import { fetchMenuItems } from '../store/menuSlice';
@@ -38,6 +39,7 @@ const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'F
 
 const MealPlanner = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, login } = useAuth();
@@ -82,7 +84,8 @@ const MealPlanner = () => {
         body: JSON.stringify({ startDate, endDate }),
       });
       if (!response.ok) throw new Error('Failed to generate shopping list');
-      alert('Shopping list generated! Check your lists.');
+      const list = await response.json();
+      navigate(`/shopping`);
     } catch (error) {
       console.error('Failed to generate shopping list:', error);
       alert('Failed to generate shopping list.');
