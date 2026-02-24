@@ -42,7 +42,12 @@ router.post('/logout', (req, res) => {
       if (destroyErr) {
         return res.status(500).json({ error: 'Session destruction failed' });
       }
-      res.clearCookie('connect.sid');
+      res.clearCookie('connect.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
       res.json({ message: 'Logged out successfully' });
     });
   });
