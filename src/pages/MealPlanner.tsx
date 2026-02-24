@@ -84,7 +84,7 @@ const MealPlanner = () => {
         body: JSON.stringify({ startDate, endDate }),
       });
       if (!response.ok) throw new Error('Failed to generate shopping list');
-      const list = await response.json();
+      await response.json();
       navigate(`/shopping`);
     } catch (error) {
       console.error('Failed to generate shopping list:', error);
