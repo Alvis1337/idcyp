@@ -71,9 +71,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         method: 'POST',
         credentials: 'include',
       });
-      setUser(null);
     } catch (error) {
       console.error('Error logging out:', error);
+    } finally {
+      setUser(null);
+      window.location.href = '/';
     }
   };
 
