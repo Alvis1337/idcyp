@@ -25,7 +25,6 @@ import { fetchMenuItem, updateMenuItem } from '../store/menuSlice';
 import { useAuth } from '../contexts/AuthContext';
 
 const CATEGORIES = ['Appetizer', 'Main Course', 'Dessert', 'Beverage', 'Side Dish', 'Snack'];
-const CONTRIBUTORS = ['Chris', 'Girlfriend', 'Both'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 const CUISINES = ['Italian', 'Mexican', 'Asian', 'American', 'French', 'Indian', 'Mediterranean', 'Other'];
 
@@ -36,6 +35,7 @@ const EditMenuItem = () => {
   const { user, login } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [contributors, setContributors] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -58,6 +58,26 @@ const EditMenuItem = () => {
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchContributors = async () => {
+      try {
+        const res = await fetch('/api/groups/active', { credentials: 'include' });
+        if (!res.ok) return;
+        const group = await res.json();
+        if (!group) return;
+        const membersRes = await fetch(`/api/groups/${group.id}/members`, { credentials: 'include' });
+        if (!membersRes.ok) return;
+        const members = await membersRes.json();
+        const names = members.map((m: any) => m.name).filter(Boolean);
+        if (names.length > 1) names.push('Both');
+        setContributors(names);
+      } catch {
+        // fall back to empty
+      }
+    };
+    if (user) fetchContributors();
+  }, [user]);
 
   useEffect(() => {
     if (!id) return;
@@ -351,7 +371,7 @@ const EditMenuItem = () => {
                   label="Contributor"
                   onChange={(e) => handleChange('contributor', e.target.value)}
                 >
-                  {CONTRIBUTORS.map((cont) => (
+                  {contributors.map((cont) => (
                     <MenuItem key={cont} value={cont}>{cont}</MenuItem>
                   ))}
                 </Select>

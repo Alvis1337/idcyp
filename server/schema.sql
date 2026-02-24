@@ -11,9 +11,33 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(255),
   avatar_url TEXT,
   theme_preference VARCHAR(20) DEFAULT 'system',
+  active_group_id INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Groups table
+CREATE TABLE IF NOT EXISTS groups (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  invite_code VARCHAR(20) UNIQUE,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Group members table
+CREATE TABLE IF NOT EXISTS group_members (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(20) DEFAULT 'member',
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(group_id, user_id)
+);
+
+-- Add FK for active_group_id after groups table exists
+ALTER TABLE users ADD CONSTRAINT fk_users_active_group FOREIGN KEY (active_group_id) REFERENCES groups(id) ON DELETE SET NULL;
 
 -- Menu items table (enhanced)
 CREATE TABLE IF NOT EXISTS menu_items (
@@ -30,6 +54,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
   cuisine_type VARCHAR(100),
   is_favorite BOOLEAN DEFAULT false,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
   contributor VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -144,6 +169,10 @@ CREATE INDEX IF NOT EXISTS idx_shared_links_token ON shared_links(share_token);
 CREATE INDEX IF NOT EXISTS idx_recipes_menu_item_id ON recipes(menu_item_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON group_members(group_id);
+CREATE INDEX IF NOT EXISTS idx_groups_invite_code ON groups(invite_code);
+CREATE INDEX IF NOT EXISTS idx_menu_items_group_id ON menu_items(group_id);
 
 -- Session store table (used by connect-pg-simple)
 CREATE TABLE IF NOT EXISTS "user_sessions" (

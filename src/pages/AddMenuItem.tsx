@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -25,7 +25,6 @@ import { addMenuItem } from '../store/menuSlice';
 import { useAuth } from '../contexts/AuthContext';
 
 const CATEGORIES = ['Appetizer', 'Main Course', 'Dessert', 'Beverage', 'Side Dish', 'Snack'];
-const CONTRIBUTORS = ['Chris', 'Girlfriend', 'Both'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 const CUISINES = ['Italian', 'Mexican', 'Asian', 'American', 'French', 'Indian', 'Mediterranean', 'Other'];
 
@@ -33,6 +32,8 @@ const AddMenuItem = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { user, login } = useAuth();
+
+  const [contributors, setContributors] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -56,6 +57,26 @@ const AddMenuItem = () => {
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchContributors = async () => {
+      try {
+        const res = await fetch('/api/groups/active', { credentials: 'include' });
+        if (!res.ok) return;
+        const group = await res.json();
+        if (!group) return;
+        const membersRes = await fetch(`/api/groups/${group.id}/members`, { credentials: 'include' });
+        if (!membersRes.ok) return;
+        const members = await membersRes.json();
+        const names = members.map((m: any) => m.name).filter(Boolean);
+        if (names.length > 1) names.push('Both');
+        setContributors(names);
+      } catch {
+        // fall back to empty
+      }
+    };
+    if (user) fetchContributors();
+  }, [user]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -304,7 +325,7 @@ const AddMenuItem = () => {
                   label="Contributor"
                   onChange={(e) => handleChange('contributor', e.target.value)}
                 >
-                  {CONTRIBUTORS.map((cont) => (
+                  {contributors.map((cont) => (
                     <MenuItem key={cont} value={cont}>{cont}</MenuItem>
                   ))}
                 </Select>

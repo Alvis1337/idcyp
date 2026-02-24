@@ -12,6 +12,7 @@ import authRoutes from './routes/authRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
 import mealPlanRoutes from './routes/mealPlanRoutes.js';
 import shareRoutes from './routes/shareRoutes.js';
+import groupRoutes from './routes/groupRoutes.js';
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/meals', mealPlanRoutes);
 app.use('/api/share', shareRoutes);
+app.use('/api/groups', groupRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

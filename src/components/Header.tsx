@@ -62,6 +62,12 @@ const Header = () => {
               <Button color="inherit" onClick={() => navigate('/add')}>
                 Add Item
               </Button>
+              <Button color="inherit" onClick={() => navigate('/shopping')}>
+                Shopping
+              </Button>
+              <Button color="inherit" onClick={() => navigate('/groups')}>
+                Groups
+              </Button>
             </>
           )}
 
@@ -86,6 +92,7 @@ const Header = () => {
                 <MenuItem disabled>
                   <Typography variant="body2">{user.email}</Typography>
                 </MenuItem>
+                <MenuItem onClick={() => { handleClose(); navigate('/groups'); }}>Groups</MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </>

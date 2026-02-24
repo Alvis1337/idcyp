@@ -7,6 +7,7 @@ interface User {
   name: string;
   avatar_url?: string;
   theme_preference: string;
+  active_group_id?: number;
 }
 
 interface AuthContextType {

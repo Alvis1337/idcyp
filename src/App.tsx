@@ -9,6 +9,8 @@ import MenuItemDetail from './pages/MenuItemDetail';
 import MealPlanner from './pages/MealPlanner';
 import ShoppingList from './pages/ShoppingList';
 import EditMenuItem from './pages/EditMenuItem';
+import GroupSettings from './pages/GroupSettings';
+import JoinGroup from './pages/JoinGroup';
 import SharedMenuItem from './pages/SharedMenuItem';
 import BottomNav from './components/BottomNav';
 
@@ -26,6 +28,8 @@ function App() {
               <Route path="/edit/:id" element={<EditMenuItem />} />
               <Route path="/planner" element={<MealPlanner />} />
               <Route path="/shopping" element={<ShoppingList />} />
+              <Route path="/groups" element={<GroupSettings />} />
+              <Route path="/join/:code" element={<JoinGroup />} />
               <Route path="/shared/:token" element={<SharedMenuItem />} />
             </Routes>
             <BottomNav />

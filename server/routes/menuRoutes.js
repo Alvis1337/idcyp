@@ -9,6 +9,7 @@ router.get('/items', optionalAuth, async (req, res) => {
   try {
     const { category, search, tags, favorites } = req.query;
     const userId = req.user?.id;
+    const activeGroupId = req.user?.active_group_id;
 
     let query = `
       SELECT 
@@ -29,6 +30,15 @@ router.get('/items', optionalAuth, async (req, res) => {
     const params = [];
     let paramCount = 0;
 
+    // Scope to active group, or user's own items, or all if not logged in
+    if (activeGroupId) {
+      query += ` AND mi.group_id = $${++paramCount}`;
+      params.push(activeGroupId);
+    } else if (userId) {
+      query += ` AND mi.user_id = $${++paramCount}`;
+      params.push(userId);
+    }
+
     if (category) {
       paramCount++;
       query += ` AND mi.category = $${paramCount}`;
@@ -42,8 +52,7 @@ router.get('/items', optionalAuth, async (req, res) => {
     }
 
     if (favorites && userId) {
-      query += ` AND mi.is_favorite = true AND mi.user_id = $${++paramCount}`;
-      params.push(userId);
+      query += ` AND mi.is_favorite = true`;
     }
 
     query += ` GROUP BY mi.id ORDER BY mi.category, mi.name`;
@@ -169,16 +178,17 @@ router.post('/items', isAuthenticated, async (req, res) => {
     }
     
     const userId = req.user.id;
+    const groupId = req.user.active_group_id;
 
     // Insert menu item
     const menuResult = await client.query(
       `INSERT INTO menu_items (
         name, description, category, price, image_url, contributor,
-        prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type, user_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+        prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type, user_id, group_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
       RETURNING *`,
       [name, description, category, price, image_url, contributor,
-       prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type, userId]
+       prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type, userId, groupId]
     );
     
     const menuItemId = menuResult.rows[0].id;

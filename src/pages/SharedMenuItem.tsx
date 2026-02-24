@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -16,17 +16,23 @@ import {
   CardContent,
   Button,
   Grid,
+  Alert,
 } from '@mui/material';
-import { AccessTime, Restaurant } from '@mui/icons-material';
+import { AccessTime, Restaurant, ContentCopy as CopyIcon } from '@mui/icons-material';
 import type { MenuItem } from '../store/menuSlice';
+import { useAuth } from '../contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const SharedMenuItem = () => {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [item, setItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     const fetchSharedItem = async () => {
@@ -48,6 +54,48 @@ const SharedMenuItem = () => {
       fetchSharedItem();
     }
   }, [token]);
+
+  const copyToMyMenu = async () => {
+    if (!item || !user) return;
+    setCopying(true);
+    try {
+      const itemData = {
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        price: item.price,
+        image_url: item.image_url,
+        contributor: user.name,
+        prep_time_minutes: item.prep_time_minutes,
+        cook_time_minutes: item.cook_time_minutes,
+        servings: item.servings,
+        difficulty: item.difficulty,
+        cuisine_type: item.cuisine_type,
+        recipes: item.recipes?.map((r) => ({ instructions: r.instructions })) || [],
+        ingredients: item.ingredients?.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unit: i.unit,
+          notes: i.notes,
+          category: i.category,
+        })) || [],
+        tags: item.tags?.map((t) => t.name) || [],
+      };
+
+      const res = await fetch(`${API_BASE_URL}/menu/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(itemData),
+      });
+      if (!res.ok) throw new Error('Failed to copy');
+      setCopySuccess(true);
+    } catch {
+      setError('Failed to copy to your menu');
+    } finally {
+      setCopying(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -224,12 +272,30 @@ const SharedMenuItem = () => {
           )}
 
           <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Want to create your own menu collection?
-            </Typography>
-            <Button variant="contained" href="/" size="large">
-              Get Started
-            </Button>
+            {copySuccess ? (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Copied to your menu! <Button size="small" onClick={() => navigate('/')}>View Menu</Button>
+              </Alert>
+            ) : user ? (
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<CopyIcon />}
+                onClick={copyToMyMenu}
+                disabled={copying}
+              >
+                {copying ? 'Copying...' : 'Copy to My Menu'}
+              </Button>
+            ) : (
+              <>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Log in to copy this recipe to your menu.
+                </Typography>
+                <Button variant="contained" href="/" size="large">
+                  Get Started
+                </Button>
+              </>
+            )}
           </Box>
         </Grid>
       </Grid>
