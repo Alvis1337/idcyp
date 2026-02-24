@@ -7,3 +7,4 @@ releases:
     chart: ./helm/idcyp
     values:
       - ./values.yaml
+      - ./secrets.yaml
