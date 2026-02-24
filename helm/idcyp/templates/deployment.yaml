@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "idcyp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "idcyp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "idcyp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "idcyp.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.postgresql.enabled }}
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ include "idcyp.fullname" . }}-postgresql -p 5432 -U {{ .Values.postgresql.auth.username }}; do echo "waiting for db..."; sleep 2; done
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: DB_HOST
+              value: {{ include "idcyp.fullname" . }}-postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: DB_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: NODE_ENV
+              value: {{ .Values.env.nodeEnv | quote }}
+            - name: PORT
+              value: {{ .Values.env.port | quote }}
+            - name: CLIENT_URL
+              value: {{ .Values.env.clientUrl | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "idcyp.fullname" . }}-secrets
+                  key: DB_PASSWORD
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "idcyp.fullname" . }}-secrets
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "idcyp.fullname" . }}-secrets
+                  key: GOOGLE_CLIENT_SECRET
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "idcyp.fullname" . }}-secrets
+                  key: SESSION_SECRET
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "idcyp.fullname" . }}-secrets
+                  key: JWT_SECRET
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

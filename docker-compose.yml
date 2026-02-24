@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: menu_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-menu_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: menu_app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      DB_USER: ${DB_USER:-postgres}
+      DB_HOST: postgres
+      DB_NAME: ${DB_NAME:-menu_db}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_PORT: 5432
+      PORT: 3001
+      NODE_ENV: production
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET:-your-secret-key-change-in-production}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-in-production}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3001}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: menu_network

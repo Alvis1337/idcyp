@@ -1,0 +1,23 @@
+{{- if .Values.httproute.enabled -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "idcyp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "idcyp.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.httproute.gateway.name }}
+      namespace: {{ .Values.httproute.gateway.namespace }}
+  hostnames:
+    - {{ .Values.httproute.hostname | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "idcyp.fullname" . }}
+          port: {{ .Values.service.port }}
+{{- end }}

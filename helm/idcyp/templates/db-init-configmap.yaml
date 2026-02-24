@@ -1,0 +1,127 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "idcyp.fullname" . }}-db-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "idcyp.labels" . | nindent 4 }}
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      google_id VARCHAR(255) UNIQUE,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      name VARCHAR(255),
+      avatar_url TEXT,
+      theme_preference VARCHAR(20) DEFAULT 'system',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS menu_items (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      category VARCHAR(100) NOT NULL,
+      price DECIMAL(10, 2),
+      image_url TEXT,
+      prep_time_minutes INTEGER,
+      cook_time_minutes INTEGER,
+      servings INTEGER DEFAULT 4,
+      difficulty VARCHAR(50),
+      cuisine_type VARCHAR(100),
+      is_favorite BOOLEAN DEFAULT false,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      contributor VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS recipes (
+      id SERIAL PRIMARY KEY,
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      instructions TEXT NOT NULL,
+      step_number INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS ingredients (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL UNIQUE,
+      category VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS menu_item_ingredients (
+      id SERIAL PRIMARY KEY,
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      ingredient_id INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
+      quantity DECIMAL(10, 2),
+      unit VARCHAR(50),
+      notes TEXT,
+      UNIQUE(menu_item_id, ingredient_id)
+    );
+    CREATE TABLE IF NOT EXISTS meal_plans (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      planned_date DATE NOT NULL,
+      meal_type VARCHAR(50) NOT NULL,
+      notes TEXT,
+      completed BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS shared_links (
+      id SERIAL PRIMARY KEY,
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      share_token VARCHAR(255) UNIQUE NOT NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMP,
+      view_count INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS ratings (
+      id SERIAL PRIMARY KEY,
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+      review TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(menu_item_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS tags (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS menu_item_tags (
+      id SERIAL PRIMARY KEY,
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+      UNIQUE(menu_item_id, tag_id)
+    );
+    CREATE TABLE IF NOT EXISTS shopping_lists (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS shopping_list_items (
+      id SERIAL PRIMARY KEY,
+      shopping_list_id INTEGER REFERENCES shopping_lists(id) ON DELETE CASCADE,
+      ingredient_id INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
+      quantity DECIMAL(10, 2),
+      unit VARCHAR(50),
+      checked BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category);
+    CREATE INDEX IF NOT EXISTS idx_menu_items_contributor ON menu_items(contributor);
+    CREATE INDEX IF NOT EXISTS idx_menu_items_user_id ON menu_items(user_id);
+    CREATE INDEX IF NOT EXISTS idx_menu_items_favorite ON menu_items(is_favorite);
+    CREATE INDEX IF NOT EXISTS idx_meal_plans_date ON meal_plans(planned_date);
+    CREATE INDEX IF NOT EXISTS idx_meal_plans_user_id ON meal_plans(user_id);
+    CREATE INDEX IF NOT EXISTS idx_shared_links_token ON shared_links(share_token);
+    CREATE INDEX IF NOT EXISTS idx_recipes_menu_item_id ON recipes(menu_item_id);
+    CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+{{- end }}

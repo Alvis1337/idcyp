@@ -1,0 +1,100 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "idcyp.fullname" . }}-postgresql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "idcyp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ include "idcyp.fullname" . }}-postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "idcyp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "idcyp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:15-alpine
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "idcyp.fullname" . }}-secrets
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "pg_isready -U {{ .Values.postgresql.auth.username }}"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "pg_isready -U {{ .Values.postgresql.auth.username }}"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+      volumes:
+        - name: init-script
+          configMap:
+            name: {{ include "idcyp.fullname" . }}-db-init
+  {{- if .Values.postgresql.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.persistence.size }}
+  {{- else }}
+        - name: data
+          emptyDir: {}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "idcyp.fullname" . }}-postgresql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "idcyp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: postgresql
+      protocol: TCP
+      name: postgresql
+  selector:
+    {{- include "idcyp.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+{{- end }}
