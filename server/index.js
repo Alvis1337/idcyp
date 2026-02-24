@@ -57,6 +57,14 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Prevent CDN/Cloudflare from caching API responses
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  res.set('CDN-Cache-Control', 'no-store');
+  res.set('Cloudflare-CDN-Cache-Control', 'no-store');
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
