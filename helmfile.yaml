@@ -1,0 +1,9 @@
+repositories: []
+
+releases:
+  - name: idcyp
+    namespace: idcyp
+    createNamespace: true
+    chart: ./helm/idcyp
+    values:
+      - ./values.yaml

@@ -2,10 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import passport from './auth.js';
+import pool from './db.js';
 import authRoutes from './routes/authRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
 import mealPlanRoutes from './routes/mealPlanRoutes.js';
@@ -28,16 +30,22 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Session configuration
+const PgSession = connectPgSimple(session);
 app.use(
   session({
+    store: new PgSession({
+      pool,
+      tableName: 'user_sessions',
+      createTableIfMissing: true,
+    }),
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Set to false since we're not using HTTPS locally
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax', // Important for OAuth flows
+      sameSite: 'lax',
     },
   })
 );

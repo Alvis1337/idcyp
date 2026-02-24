@@ -68,6 +68,29 @@ const MealPlanner = () => {
     }
   }, [dispatch, selectedDate, user]);
 
+  const [shoppingListLoading, setShoppingListLoading] = useState(false);
+
+  const handleGenerateShoppingList = async () => {
+    setShoppingListLoading(true);
+    try {
+      const startDate = weekDays[0].toISOString().split('T')[0];
+      const endDate = weekDays[6].toISOString().split('T')[0];
+      const response = await fetch('/api/meals/plans/shopping-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ startDate, endDate }),
+      });
+      if (!response.ok) throw new Error('Failed to generate shopping list');
+      alert('Shopping list generated! Check your lists.');
+    } catch (error) {
+      console.error('Failed to generate shopping list:', error);
+      alert('Failed to generate shopping list.');
+    } finally {
+      setShoppingListLoading(false);
+    }
+  };
+
   const getWeekDays = () => {
     const start = new Date(selectedDate);
     start.setDate(start.getDate() - start.getDay());
@@ -152,8 +175,10 @@ const MealPlanner = () => {
           variant="outlined"
           startIcon={<ShoppingCartIcon />}
           size={isMobile ? 'small' : 'medium'}
+          onClick={handleGenerateShoppingList}
+          disabled={shoppingListLoading}
         >
-          Shopping List
+          {shoppingListLoading ? 'Generating...' : 'Shopping List'}
         </Button>
       </Box>
 
