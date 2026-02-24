@@ -56,11 +56,19 @@ router.post('/plans', isAuthenticated, async (req, res) => {
     const { menu_item_id, planned_date, meal_type, notes } = req.body;
     const userId = req.user.id;
 
-    const result = await pool.query(
+    const insertResult = await pool.query(
       `INSERT INTO meal_plans (user_id, menu_item_id, planned_date, meal_type, notes)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
+       RETURNING id`,
       [userId, menu_item_id, planned_date, meal_type, notes]
+    );
+
+    const result = await pool.query(
+      `SELECT mp.*, mi.name as meal_name, mi.image_url, mi.category
+       FROM meal_plans mp
+       JOIN menu_items mi ON mp.menu_item_id = mi.id
+       WHERE mp.id = $1`,
+      [insertResult.rows[0].id]
     );
 
     res.status(201).json(result.rows[0]);

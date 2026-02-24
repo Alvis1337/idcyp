@@ -164,7 +164,7 @@ const MenuItemCard = ({ item }: MenuItemCardProps) => {
             size="small" 
             color="primary" 
             aria-label="edit"
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/edit/${item.id}`); }}
           >
             <EditIcon fontSize="small" />
           </IconButton>

@@ -8,6 +8,7 @@ import AddMenuItem from './pages/AddMenuItem';
 import MenuItemDetail from './pages/MenuItemDetail';
 import MealPlanner from './pages/MealPlanner';
 import ShoppingList from './pages/ShoppingList';
+import EditMenuItem from './pages/EditMenuItem';
 import SharedMenuItem from './pages/SharedMenuItem';
 import BottomNav from './components/BottomNav';
 
@@ -22,6 +23,7 @@ function App() {
               <Route path="/" element={<MenuList />} />
               <Route path="/add" element={<AddMenuItem />} />
               <Route path="/menu/:id" element={<MenuItemDetail />} />
+              <Route path="/edit/:id" element={<EditMenuItem />} />
               <Route path="/planner" element={<MealPlanner />} />
               <Route path="/shopping" element={<ShoppingList />} />
               <Route path="/shared/:token" element={<SharedMenuItem />} />

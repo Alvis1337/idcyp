@@ -31,6 +31,7 @@ import {
   AccessTime,
   Restaurant,
   Star,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchMenuItem, toggleFavorite, addRating, clearSelectedItem } from '../store/menuSlice';
@@ -104,13 +105,21 @@ const MenuItemDetail = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 3, mb: 4 }}>
-      <Button
-        startIcon={<ArrowBack />}
-        onClick={() => navigate('/')}
-        sx={{ mb: 2 }}
-      >
-        Back to Menu
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/')}
+        >
+          Back to Menu
+        </Button>
+        <Button
+          startIcon={<EditIcon />}
+          variant="outlined"
+          onClick={() => navigate(`/edit/${item.id}`)}
+        >
+          Edit
+        </Button>
+      </Box>
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 5 }}>

@@ -269,19 +269,24 @@ router.post('/items', isAuthenticated, async (req, res) => {
 
 // Update a menu item
 router.put('/items/:id', isAuthenticated, async (req, res) => {
+  const client = await pool.connect();
+
   try {
+    await client.query('BEGIN');
+
     const { id } = req.params;
     const { 
       name, description, category, price, image_url, contributor,
-      prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type, is_favorite
+      prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type, is_favorite,
+      recipes, ingredients, tags
     } = req.body;
     
-    const result = await pool.query(
+    const result = await client.query(
       `UPDATE menu_items 
        SET name = $1, description = $2, category = $3, price = $4, 
            image_url = $5, contributor = $6, prep_time_minutes = $7,
            cook_time_minutes = $8, servings = $9, difficulty = $10,
-           cuisine_type = $11, is_favorite = $12, updated_at = CURRENT_TIMESTAMP
+           cuisine_type = $11, is_favorite = COALESCE($12, is_favorite), updated_at = CURRENT_TIMESTAMP
        WHERE id = $13 
        RETURNING *`,
       [name, description, category, price, image_url, contributor,
@@ -289,13 +294,87 @@ router.put('/items/:id', isAuthenticated, async (req, res) => {
     );
     
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Menu item not found' });
     }
-    
+
+    // Update recipes if provided
+    if (recipes !== undefined) {
+      await client.query('DELETE FROM recipes WHERE menu_item_id = $1', [id]);
+      for (let i = 0; i < recipes.length; i++) {
+        if (recipes[i].instructions && recipes[i].instructions.trim()) {
+          await client.query(
+            'INSERT INTO recipes (menu_item_id, instructions, step_number) VALUES ($1, $2, $3)',
+            [id, recipes[i].instructions, i + 1]
+          );
+        }
+      }
+    }
+
+    // Update ingredients if provided
+    if (ingredients !== undefined) {
+      await client.query('DELETE FROM menu_item_ingredients WHERE menu_item_id = $1', [id]);
+      for (const ing of ingredients) {
+        if (!ing.name || !ing.name.trim()) continue;
+        let ingredientResult = await client.query(
+          'SELECT id FROM ingredients WHERE name = $1',
+          [ing.name]
+        );
+
+        let ingredientId;
+        if (ingredientResult.rows.length === 0) {
+          const newIng = await client.query(
+            'INSERT INTO ingredients (name, category) VALUES ($1, $2) RETURNING id',
+            [ing.name, ing.category || 'Other']
+          );
+          ingredientId = newIng.rows[0].id;
+        } else {
+          ingredientId = ingredientResult.rows[0].id;
+        }
+
+        await client.query(
+          'INSERT INTO menu_item_ingredients (menu_item_id, ingredient_id, quantity, unit, notes) VALUES ($1, $2, $3, $4, $5)',
+          [id, ingredientId, ing.quantity, ing.unit, ing.notes]
+        );
+      }
+    }
+
+    // Update tags if provided
+    if (tags !== undefined) {
+      await client.query('DELETE FROM menu_item_tags WHERE menu_item_id = $1', [id]);
+      for (const tagName of tags) {
+        if (!tagName || !tagName.trim()) continue;
+        let tagResult = await client.query(
+          'SELECT id FROM tags WHERE name = $1',
+          [tagName]
+        );
+
+        let tagId;
+        if (tagResult.rows.length === 0) {
+          const newTag = await client.query(
+            'INSERT INTO tags (name) VALUES ($1) RETURNING id',
+            [tagName]
+          );
+          tagId = newTag.rows[0].id;
+        } else {
+          tagId = tagResult.rows[0].id;
+        }
+
+        await client.query(
+          'INSERT INTO menu_item_tags (menu_item_id, tag_id) VALUES ($1, $2)',
+          [id, tagId]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
     res.json(result.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error updating menu item:', error);
     res.status(500).json({ error: 'Failed to update menu item' });
+  } finally {
+    client.release();
   }
 });
 
