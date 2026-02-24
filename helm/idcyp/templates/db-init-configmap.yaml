@@ -124,4 +124,15 @@ data:
     CREATE INDEX IF NOT EXISTS idx_recipes_menu_item_id ON recipes(menu_item_id);
     CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE TABLE IF NOT EXISTS "user_sessions" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL
+    );
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_sessions_pkey') THEN
+        ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid");
+      END IF;
+    END $$;
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_expire ON "user_sessions" ("expire");
 {{- end }}

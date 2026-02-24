@@ -145,6 +145,15 @@ CREATE INDEX IF NOT EXISTS idx_recipes_menu_item_id ON recipes(menu_item_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
+-- Session store table (used by connect-pg-simple)
+CREATE TABLE IF NOT EXISTS "user_sessions" (
+  "sid" varchar NOT NULL COLLATE "default",
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL
+);
+ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expire ON "user_sessions" ("expire");
+
 -- Insert sample data
 INSERT INTO menu_items (name, description, category, price, contributor, prep_time_minutes, cook_time_minutes, servings, difficulty, cuisine_type) VALUES
   ('Spaghetti Carbonara', 'Classic Italian pasta with eggs, cheese, pancetta, and black pepper', 'Main Course', 14.99, 'Chris', 10, 20, 4, 'Medium', 'Italian'),
