@@ -54,6 +54,10 @@ const MealPlanner = () => {
   const { items: menuItems } = useAppSelector((state) => state.menu);
 
   const [selectedDate, setSelectedDateLocal] = useState(new Date());
+  // dialogDate tracks which day the "Add meal" dialog is targeting.
+  // Kept separate from selectedDate so opening the dialog doesn't trigger
+  // a re-fetch (which would race with and overwrite the newly added plan).
+  const [dialogDate, setDialogDate] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newPlan, setNewPlan] = useState({
     menu_item_id: 0,
@@ -140,7 +144,7 @@ const MealPlanner = () => {
     try {
       await dispatch(addMealPlan({
         ...newPlan,
-        planned_date: toLocalDateString(selectedDate),
+        planned_date: toLocalDateString(dialogDate),
         completed: false,
       })).unwrap();
 
@@ -278,7 +282,7 @@ const MealPlanner = () => {
                               size="small"
                               startIcon={<AddIcon />}
                               onClick={() => {
-                                setSelectedDateLocal(day);
+                                setDialogDate(day);
                                 setNewPlan({ ...newPlan, meal_type: mealType as any });
                                 setDialogOpen(true);
                               }}
