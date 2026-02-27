@@ -37,6 +37,13 @@ import { useAuth } from '../contexts/AuthContext';
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const toLocalDateString = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 const MealPlanner = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -62,8 +69,8 @@ const MealPlanner = () => {
       endDate.setDate(endDate.getDate() + 6);
 
       dispatch(fetchMealPlans({
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
+        startDate: toLocalDateString(startDate),
+        endDate: toLocalDateString(endDate),
       }));
 
       dispatch(fetchMenuItems());
@@ -75,8 +82,8 @@ const MealPlanner = () => {
   const handleGenerateShoppingList = async () => {
     setShoppingListLoading(true);
     try {
-      const startDate = weekDays[0].toISOString().split('T')[0];
-      const endDate = weekDays[6].toISOString().split('T')[0];
+      const startDate = toLocalDateString(weekDays[0]);
+      const endDate = toLocalDateString(weekDays[6]);
       const response = await fetch('/api/meals/plans/shopping-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,7 +114,7 @@ const MealPlanner = () => {
   const weekDays = getWeekDays();
 
   const getMealsForDay = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateString(date);
     return plans.filter((plan) => plan.planned_date === dateStr);
   };
 
@@ -133,7 +140,7 @@ const MealPlanner = () => {
     try {
       await dispatch(addMealPlan({
         ...newPlan,
-        planned_date: selectedDate.toISOString().split('T')[0],
+        planned_date: toLocalDateString(selectedDate),
         completed: false,
       })).unwrap();
 
@@ -236,21 +243,30 @@ const MealPlanner = () => {
                             {mealType}
                           </Typography>
                           {meal ? (
-                            <Box 
-                              sx={{ 
-                                p: 1, 
-                                backgroundColor: 'action.hover', 
+                            <Box
+                              sx={{
+                                p: 1,
+                                backgroundColor: 'action.hover',
                                 borderRadius: 1,
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                               }}
                             >
-                              <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  '&:hover': { textDecoration: 'underline' },
+                                  flex: 1,
+                                }}
+                                onClick={() => navigate(`/menu/${meal.menu_item_id}`)}
+                              >
                                 {meal.meal_name}
                               </Typography>
-                              <IconButton 
-                                size="small" 
+                              <IconButton
+                                size="small"
                                 onClick={() => handleDeletePlan(meal.id)}
                                 sx={{ ml: 0.5 }}
                               >

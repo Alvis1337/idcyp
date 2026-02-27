@@ -40,8 +40,6 @@ const EditMenuItem = () => {
     name: '',
     description: '',
     category: '',
-    price: '',
-    image_url: '',
     contributor: '',
     prep_time_minutes: '',
     cook_time_minutes: '',
@@ -88,8 +86,6 @@ const EditMenuItem = () => {
           name: item.name || '',
           description: item.description || '',
           category: item.category || '',
-          price: item.price ? String(item.price) : '',
-          image_url: item.image_url || '',
           contributor: item.contributor || '',
           prep_time_minutes: item.prep_time_minutes ? String(item.prep_time_minutes) : '',
           cook_time_minutes: item.cook_time_minutes ? String(item.cook_time_minutes) : '',
@@ -187,7 +183,6 @@ const EditMenuItem = () => {
       const itemData: any = {
         id: Number(id),
         ...formData,
-        price: parseFloat(formData.price) || 0,
         prep_time_minutes: parseInt(formData.prep_time_minutes) || 0,
         cook_time_minutes: parseInt(formData.cook_time_minutes) || 0,
         servings: parseInt(formData.servings) || 4,
@@ -264,41 +259,18 @@ const EditMenuItem = () => {
             sx={{ mb: 2 }}
           />
 
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={formData.category}
-                  label="Category"
-                  onChange={(e) => handleChange('category', e.target.value)}
-                >
-                  {CATEGORIES.map((cat) => (
-                    <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                label="Price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => handleChange('price', e.target.value)}
-                inputProps={{ step: '0.01', min: '0' }}
-              />
-            </Grid>
-          </Grid>
-
-          <TextField
-            fullWidth
-            label="Image URL"
-            value={formData.image_url}
-            onChange={(e) => handleChange('image_url', e.target.value)}
-            sx={{ mb: 2 }}
-          />
+          <FormControl fullWidth required sx={{ mb: 2 }}>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={formData.category}
+              label="Category"
+              onChange={(e) => handleChange('category', e.target.value)}
+            >
+              {CATEGORIES.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <Divider sx={{ my: 3 }} />
 
