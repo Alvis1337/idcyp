@@ -1,0 +1,16 @@
+name = "idcyp"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+pages_build_output_dir = "dist"
+
+# Run: npx wrangler d1 create idcyp-db
+# Then replace the database_id below with the output
+[[d1_databases]]
+binding = "DB"
+database_name = "idcyp-db"
+database_id = "b52398e9-15dc-4913-a43c-d3182b3a853e"
+
+# Set these via: npx wrangler pages secret put GOOGLE_CLIENT_ID
+# Or in the Cloudflare Pages dashboard > Settings > Environment Variables
+# Required vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, CLIENT_URL
