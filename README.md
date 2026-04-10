@@ -1,191 +1,109 @@
-# 🍽️ Menu Collection
+# idcyp — Menu Collection
 
-A full-stack meal planning platform for managing recipes, planning meals, and generating shopping lists. Built for you and your partner to collaborate on meal planning!
+A full-stack meal planning app for managing recipes, planning meals, and generating shopping lists. Built to collaborate with your partner on meal planning.
 
-## ✨ Features
+**Live:** [menu.chrisalvis.me](https://menu.chrisalvis.me)
 
-- 🔐 **Google OAuth** - Secure login with Google
-- 🎨 **Dark/Light Mode** - Auto-detects system preference
-- 📱 **Mobile-First** - Beautiful responsive design with bottom nav
-- 📝 **Recipe Management** - Full recipes with ingredients, steps, and cooking details
-- 📅 **Meal Planner** - Weekly calendar to plan all meals
-- 🛒 **Shopping Lists** - Auto-generate from meal plans
-- ⭐ **Ratings & Reviews** - Rate and review dishes
-- ❤️ **Favorites** - Bookmark your favorite recipes
-- 🔗 **Sharing** - Generate shareable links for recipes
-- 🔍 **Search & Filter** - Find recipes easily
+## Features
 
-## 🚀 Quick Start
+- Google OAuth login
+- Recipe management — ingredients, steps, cooking details
+- Weekly meal planner
+- Auto-generated shopping lists from meal plans
+- Ratings & reviews
+- Favorites
+- Shareable recipe links
+- Search & filter
+- Dark / light / system theme
 
-### Prerequisites
-- Docker & Docker Compose
-- Google OAuth credentials ([Get them here](https://console.cloud.google.com/))
+## Tech Stack
 
-### Setup (5 minutes)
+**Frontend:** React 19, TypeScript, Material UI, Redux Toolkit  
+**Backend:** Cloudflare Pages Functions (serverless)  
+**Database:** Cloudflare D1 (SQLite)  
+**Auth:** Google OAuth 2.0 (session-based, stored in D1)  
+**Deploy:** GitHub Actions → Cloudflare Pages on push to `main`
 
-1. **Get Google OAuth Credentials**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create OAuth 2.0 Client ID
-   - Add redirect URI: `http://localhost:3001/api/auth/google/callback`
-
-2. **Configure Environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your Google OAuth credentials
-   ```
-
-3. **Launch**
-   ```bash
-   docker-compose up --build
-   ```
-
-4. **Access**
-   - Open http://localhost:3001
-   - Login with Google
-   - Start adding recipes!
-
-## 🛠️ Development
-
-### Local Development (without Docker)
+## Local Development
 
 ```bash
-# Install dependencies
 npm install
 
-# Setup database
-./setup-db.sh
+# Build frontend first (required before running Pages dev)
+npm run build
 
-# Start both frontend and backend
+# Apply D1 schema locally (first time only)
+npx wrangler d1 execute idcyp-db --local --file=schema.d1.sql
+
+# Run Vite dev server + Wrangler Pages Functions concurrently
 npm run dev:all
-
-# Or start separately:
-npm run dev          # Frontend only (port 5173)
-npm run dev:server   # Backend only (port 3001)
 ```
 
-### Docker Commands
+Vite runs on port 5173 and proxies `/api/*` to Wrangler on port 8788.
 
-```bash
-# Start
-docker-compose up
-
-# Start in background
-docker-compose up -d
-
-# Stop
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Rebuild
-docker-compose up --build
-```
-
-## 🏗️ Tech Stack
-
-**Frontend:** React 19, TypeScript, Material UI, Redux Toolkit, React Router  
-**Backend:** Node.js, Express, PostgreSQL, Passport.js (OAuth)  
-**DevOps:** Docker, Docker Compose
-
-## 📊 Database
-
-PostgreSQL database with 12 tables including:
-- Users & authentication
-- Menu items with recipes
-- Ingredients & meal plans
-- Shopping lists
-- Ratings & reviews
-- Shareable links
-
-## 📁 Project Structure
+Create a `.dev.vars` file for local secrets:
 
 ```
-├── server/          # Backend API
-│   ├── index.js     # Express server
-│   ├── db.js        # Database connection
-│   ├── auth.js      # OAuth setup
-│   ├── routes/      # API routes
-│   └── schema.sql   # Database schema
-├── src/             # Frontend React app
-│   ├── components/  # UI components
-│   ├── pages/       # Page views
-│   ├── store/       # Redux state
-│   ├── theme/       # Theme system
-│   └── contexts/    # React contexts
-└── docker-compose.yml
-```
-
-## 🔒 Security
-
-- Google OAuth 2.0 authentication
-- Session-based auth with secure cookies
-- Environment-based secrets
-- SQL injection prevention
-- CORS protection
-
-## 🌐 Environment Variables
-
-Required in `.env`:
-
-```env
-# Google OAuth (REQUIRED)
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
-
-# Security (Generate with: openssl rand -hex 32)
-SESSION_SECRET=your-session-secret
-JWT_SECRET=your-jwt-secret
-
-# Database
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=menu_db
-DB_PORT=5432
-
-# Server
-PORT=3001
-CLIENT_URL=http://localhost:3001
+SESSION_SECRET=any-random-string
+CLIENT_URL=http://localhost:8788
 ```
 
-## 📝 API Endpoints
+Add `http://localhost:8788/api/auth/google/callback` as an authorized redirect URI in Google Cloud Console.
 
-- **Auth:** `/api/auth/google`, `/api/auth/me`, `/api/auth/logout`
-- **Menu:** `/api/menu/items`, `/api/menu/items/:id`, `/api/menu/tags`
-- **Meals:** `/api/meals/plans`, `/api/meals/plans/shopping-list`
-- **Share:** `/api/share/:menuItemId/share`, `/api/share/shared/:token`
+## Deployment
 
-## 🐳 Deployment
+Push to `main` — GitHub Actions handles the rest.
 
-Deploy to any cloud platform that supports Docker:
-- AWS ECS/EC2
-- DigitalOcean
-- Google Cloud Run
-- Heroku
-- Any VPS with Docker
-
-Update `CLIENT_URL` and Google OAuth redirect URIs for production.
-
-## 🆘 Troubleshooting
-
-**Can't login?**
-- Check Google OAuth credentials in `.env`
-- Verify redirect URI in Google Console
-
-**Database connection error?**
+To deploy manually:
 ```bash
-docker-compose down
-docker-compose up --build
+npm run deploy
 ```
 
-**Port already in use?**
-Change port in `docker-compose.yml` or `.env`
+### First-time setup
 
-## 📄 License
+```bash
+npx wrangler d1 create idcyp-db
+npx wrangler d1 execute idcyp-db --remote --file=schema.d1.sql
+npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name idcyp
+npx wrangler pages secret put GOOGLE_CLIENT_SECRET --project-name idcyp
+npx wrangler pages secret put SESSION_SECRET --project-name idcyp
+npx wrangler pages secret put CLIENT_URL --project-name idcyp
+```
 
-Private project
+## Project Structure
 
----
+```
+├── functions/           # Cloudflare Pages Functions (API)
+│   ├── _middleware.js   # Session auth middleware
+│   ├── _lib/            # Shared helpers (auth, cookies, normalize)
+│   └── api/
+│       ├── auth/        # Google OAuth, session, preferences
+│       ├── menu/        # Menu items, tags, ingredients
+│       ├── meals/       # Meal plans, shopping lists
+│       ├── share/       # Shareable links
+│       └── groups/      # Group management
+├── src/                 # React frontend
+│   ├── components/
+│   ├── pages/
+│   ├── store/           # Redux slices
+│   ├── theme/
+│   └── contexts/        # Auth context
+├── schema.d1.sql        # D1 (SQLite) database schema
+└── wrangler.toml        # Cloudflare configuration
+```
 
-Built with ❤️ for meal planning • Happy cooking! 👨‍🍳👩‍🍳
-# idcyp
+## API Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/auth/google` | Start OAuth flow |
+| GET | `/api/auth/google/callback` | OAuth callback |
+| GET | `/api/auth/me` | Current user |
+| POST | `/api/auth/logout` | Logout |
+| GET/POST | `/api/menu/items` | List / create items |
+| GET/PUT/DELETE | `/api/menu/items/:id` | Single item |
+| GET/POST | `/api/meals/plans` | Meal plans |
+| GET/POST | `/api/groups` | Groups |
+| POST | `/api/groups/join/:code` | Join via invite |
