@@ -8,69 +8,87 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 npm install
 
-# Start both frontend (port 5173) and backend (port 3001) concurrently
-npm run dev:all
+# Local development (run both in separate terminals)
+npm run build          # Build frontend first (required before dev:pages)
+npm run dev:all        # Vite (port 5173) + Wrangler Pages dev (port 8788) concurrently
 
-# Start individually
-npm run dev          # Frontend only (Vite, port 5173)
-npm run dev:server   # Backend only (Express, port 3001)
+# Or separately:
+npm run dev            # Frontend only (Vite, port 5173)
+npm run dev:pages      # Pages Functions + D1 local (port 8788)
 
-# Build for production (TypeScript compile + Vite bundle → dist/)
+# Build for production
 npm run build
+
+# Deploy to Cloudflare Pages (also runs automatically via GitHub Actions on push to main)
+npm run deploy
 
 # Lint
 npm run lint
 
-# Initialize database (requires PostgreSQL running locally)
-./setup-db.sh
+# Apply D1 schema (first time or after schema changes)
+npx wrangler d1 execute idcyp-db --local --file=schema.d1.sql   # local
+npx wrangler d1 execute idcyp-db --remote --file=schema.d1.sql  # production
 ```
 
 There are no tests in this project.
 
 ## Architecture Overview
 
-This is a **full-stack meal planning app** with a unified Express server that serves both the API and the built frontend in production.
+This is a **full-stack meal planning app** deployed entirely on Cloudflare — frontend on Pages, backend as Pages Functions, database as D1 (SQLite).
 
 ### Frontend → Backend Communication
-- During local dev: Vite's dev server proxies `/api/*` → `http://localhost:3001` (configured in `vite.config.ts`)
-- In production: Express serves the `dist/` static files and also handles `/api/*` routes directly
+- During local dev: Vite's dev server proxies `/api/*` → `http://localhost:8788` (Wrangler's local port)
+- In production: Cloudflare Pages serves the `dist/` static files and handles `/api/*` via Functions
 - `VITE_API_URL` env var can override the API base URL (defaults to `/api`)
 
-### Backend (`server/`)
-- **`index.js`**: Express app entrypoint. Sets up middleware, mounts all route files under `/api/*`, and serves the `dist/` static bundle via catch-all for SPA routing.
-- **`auth.js`**: Passport.js Google OAuth 2.0 strategy. On first login, auto-creates a default group for the user and sets it as their `active_group_id`.
-- **`db.js`**: PostgreSQL connection pool (`pg`).
-- **`schema.sql`**: Full database schema. Run this to initialize the database.
-- **`middleware/auth.js`**: Exports `isAuthenticated` (blocks unauthenticated requests) and `optionalAuth` (no-op, used where auth is optional).
-- **`routes/`**: One file per domain — `authRoutes.js`, `menuRoutes.js`, `mealPlanRoutes.js`, `shareRoutes.js`, `groupRoutes.js`.
+### Backend (`functions/`)
+- **`functions/_middleware.js`**: Runs on every request. Reads the `session` cookie, looks up the session in D1, hydrates `context.data.user`.
+- **`functions/_lib/auth.js`**: `requireAuth()`, `json()` helpers, and `generateInviteCode()`.
+- **`functions/_lib/cookie.js`**: Cookie header parser.
+- **`functions/_lib/normalize.js`**: Converts D1 integer booleans (0/1) to JS booleans, parses JSON aggregate fields.
+- **`functions/api/`**: One file per route. Exports `onRequestGet`, `onRequestPost`, etc.
 
-Sessions are stored in PostgreSQL (`user_sessions` table, managed by `connect-pg-simple`). The server sets `trust proxy: 1` for secure cookie behavior behind a reverse proxy.
+### Authentication
+Google OAuth 2.0 implemented manually (no Passport.js — doesn't run in Workers):
+1. `GET /api/auth/google` → redirects to Google
+2. `GET /api/auth/google/callback` → exchanges code for tokens, upserts user in D1, creates session
+3. Sessions stored in D1 `sessions` table. Cookie: `session=<sid>`
 
 ### Frontend (`src/`)
-- **`App.tsx`**: Root component. Wraps everything in `ThemeProvider` → `AuthProvider` → `Router`. Defines all client-side routes.
-- **`contexts/AuthContext.tsx`**: React Context for auth state (`user`, `loading`, `login`, `logout`, `refreshUser`). `login()` redirects to the Google OAuth flow. Always fetch with `credentials: 'include'`.
+- **`App.tsx`**: Root component. Wraps everything in `ThemeProvider` → `AuthProvider` → `Router`.
+- **`contexts/AuthContext.tsx`**: React Context for auth state. Always fetch with `credentials: 'include'`.
 - **`store/`**: Redux Toolkit store with two slices:
-  - `menuSlice.ts`: Manages `MenuItem[]`, `selectedItem`, `filters`, and async thunks for all menu CRUD + favorites + ratings. The `MenuItem` type has `price` typed as `number | string` because PostgreSQL returns `DECIMAL` as a string.
+  - `menuSlice.ts`: Manages `MenuItem[]`, filters, async thunks for menu CRUD + favorites + ratings.
   - `mealPlanSlice.ts`: Manages `MealPlan[]` and async thunks for planning and shopping list generation.
-  - Auth state is intentionally kept in React Context rather than Redux.
-- **`theme/ThemeProvider.tsx`**: Wraps MUI's `ThemeProvider`. Supports `light` | `dark` | `system` modes, persisted to `localStorage`. Use `useThemeMode()` hook to read or toggle the theme.
 
 ### Data Scoping via Groups
-A core pattern: every `menu_item` has both a `user_id` and a `group_id`. The backend's `GET /api/menu/items` scopes results by:
-1. `req.user.active_group_id` → show all items in that group
-2. Otherwise, `req.user.id` → show only the current user's items
-3. No auth → no items returned
+Every `menu_item` has both a `user_id` and a `group_id`. `GET /api/menu/items` scopes by:
+1. `user.active_group_id` → show all items in that group
+2. Otherwise `user.id` → show only the user's own items
+3. No auth → empty array
 
-New users automatically get a personal default group on first OAuth login.
+### Key Database Tables (D1/SQLite)
+- `users` — `active_group_id` FK to groups
+- `groups` + `group_members` — collaborative sharing; roles: `owner` or `member`; invite via `invite_code`
+- `menu_items` — scoped by `group_id`; related to `recipes`, `ingredients`, `tags`
+- `meal_plans` — maps a `menu_item` to a date and meal type
+- `ratings` — one per `(menu_item_id, user_id)` pair (upserted)
+- `shared_links` — token-based public sharing
+- `sessions` — server-side session storage (sid, sess JSON, expire)
 
-### Key Database Tables
-- `users` — has `active_group_id` FK pointing to their currently-selected group
-- `groups` + `group_members` — collaborative sharing; roles are `owner` or `member`; invite via `invite_code`
-- `menu_items` — scoped by `group_id`; references `recipes`, `ingredients` (via `menu_item_ingredients`), and `tags` (via `menu_item_tags`)
-- `meal_plans` — maps a `menu_item` to a date and meal type (`breakfast`, `lunch`, `dinner`, `snack`)
-- `ratings` — one rating per `(menu_item_id, user_id)` pair (upserted)
-- `shared_links` — token-based public sharing for individual menu items
+### D1 Query Patterns
+- Use `?` placeholders (not `$1`, `$2`)
+- `.all()` → `{ results: [...] }`
+- `.first()` → single row or null
+- `.run()` → for INSERT/UPDATE/DELETE without RETURNING
+- No `json_agg` / `jsonb_build_object` — use `json_group_array(json_object(...))` correlated subqueries
+- No `ILIKE` — use `LOWER(col) LIKE LOWER(?)`
+- Booleans stored as `INTEGER` (0/1) — use `normalizeBool()` or `normalizeItem()` before returning to client
+- `INSERT OR IGNORE` for upsert-like patterns on unique constraints
 
-### TypeScript / JavaScript Split
-- All frontend code (`src/`) is TypeScript.
-- All backend code (`server/`) is plain JavaScript (ES modules). There are `@types/*` packages for IDE support but the server files are `.js`.
+### Deployment
+- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`) — deploys on every push to `main`
+- **Config**: `wrangler.toml` — D1 binding `DB`, Pages project `idcyp`
+- **Secrets in Cloudflare**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `CLIENT_URL`
+- **D1 database**: `idcyp-db` (ID: `b52398e9-15dc-4913-a43c-d3182b3a853e`)
+- **Live URL**: https://idcyp.pages.dev
